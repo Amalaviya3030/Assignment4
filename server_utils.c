@@ -173,3 +173,32 @@ void update_chat_window(const char* message) {
 
     wrefresh(chat_win);
 }
+
+
+void store_message(const char* message) {
+    pthread_mutex_lock(&clients_mutex);
+    if (message_count < MAX_LINES) {
+        strcpy(last_messages[message_count], message);
+        message_count++;
+    }
+    else {
+        for (int i = 1; i < MAX_LINES; i++) {
+            strcpy(last_messages[i - 1], last_messages[i]);
+        }
+        strcpy(last_messages[MAX_LINES - 1], message);
+    }
+    update_chat_window(message);
+    pthread_mutex_unlock(&clients_mutex);
+}
+
+
+void broadcast_message(const char* message, int sender_sock) {
+    pthread_mutex_lock(&clients_mutex);
+    for (int i = 0; i < client_count; i++) {
+        if (clients[i].sockfd != sender_sock) {
+            send(clients[i].sockfd, message, strlen(message), 0);
+        }
+    }
+    pthread_mutex_unlock(&clients_mutex);
+    update_chat_window(message);
+}
