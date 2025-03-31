@@ -202,3 +202,85 @@ void broadcast_message(const char* message, int sender_sock) {
     pthread_mutex_unlock(&clients_mutex);
     update_chat_window(message);
 }
+
+void remove_client(Client* client) {
+    pthread_mutex_lock(&clients_mutex);
+    for (int i = 0; i < client_count; i++) {
+        if (clients[i].sockfd == client->sockfd) {
+            char disconnect_msg[BUFFER_SIZE];
+            snprintf(disconnect_msg, BUFFER_SIZE, "%s has left the chat", client->username);
+            broadcast_message(disconnect_msg, client->sockfd);
+
+
+            close(clients[i].sockfd);
+            for (int j = i; j < client_count - 1; j++) {
+                clients[j] = clients[j + 1];
+            }
+            client_count--;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&clients_mutex);
+}
+
+
+void* handle_client(void* arg) {
+    Client* client = (Client*)arg;
+    char buffer[BUFFER_SIZE];
+    char message[BUFFER_SIZE];
+    int bytes_received;
+    char client_ip[INET_ADDRSTRLEN];
+
+    // getting client ip
+    inet_ntop(AF_INET, &(client->address.sin_addr), client_ip, INET_ADDRSTRLEN);
+
+    // receiving username
+    bytes_received = recv(client->sockfd, client->username, 50, 0);
+    if (bytes_received <= 0) {
+        remove_client(client);
+        return NULL;
+    }
+    client->username[bytes_received] = '\0';
+
+
+    snprintf(message, BUFFER_SIZE, "%s [%s] has joined the chat",
+        client->username, client_ip);
+    broadcast_message(message, client->sockfd);
+
+    while (server_running) {
+        bytes_received = recv(client->sockfd, buffer, BUFFER_SIZE - 1, 0);
+        if (bytes_received <= 0) {
+            break;
+        }
+        buffer[bytes_received] = '\0';
+
+
+        if (strcmp(buffer, ">>bye<<") == 0) {
+
+            snprintf(message, BUFFER_SIZE, "%s [%s] has left the chat",
+                client->username, client_ip);
+            broadcast_message(message, client->sockfd);
+
+
+            usleep(100000);
+
+            break;
+        }
+
+
+        size_t prefix_len = strlen(client->username) + strlen(client_ip) + 5;
+        size_t max_msg_len = BUFFER_SIZE - prefix_len - 1;
+
+        if (strlen(buffer) > max_msg_len) {
+            buffer[max_msg_len] = '\0';
+        }
+
+
+        snprintf(message, BUFFER_SIZE, "%s [%s]: %.*s",
+            client->username, client_ip, (int)max_msg_len, buffer);
+        broadcast_message(message, client->sockfd);
+    }
+
+    remove_client(client);
+    return NULL;
+}
