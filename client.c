@@ -9,30 +9,37 @@
 #include "../include/chat_protocol.h"
 #include "../include/client_utils.h"
 
-#define SERVER_PORT 8080
-#define BUFFER_SIZE 1024
+#define SERVER_PORT 8080 //server port
+#define BUFFER_SIZE 1024 //buffer sixe for messages
 
 int sockfd;
-char username[50];
-WINDOW* chat_win, * input_win;
-char chat_history[MAX_LINES][BUFFER_SIZE];
-int line_count = 0;
+char username[50]; //username of client
+WINDOW* chat_win, * input_win; //window for chat
+char chat_history[MAX_LINES][BUFFER_SIZE]; //chat history
+int line_count = 0; //line count
 volatile sig_atomic_t client_running = 1;
+
+/*
+FUNCTION    : cleanup_client
+DESCRIPTION : cleans up anhything by clients
+PARAMETERS  : None
+RETURNS     : None
+*/
 
 void cleanup_client(void) {
     if (sockfd != -1) {
         // sending message before closing chat
         const char* exit_msg = ">>bye<<";
         send(sockfd, exit_msg, strlen(exit_msg), 0);
-        usleep(100000);
+        usleep(100000); //delay before sending the message
 
 
-        shutdown(sockfd, SHUT_RDWR);
-        close(sockfd);
+        shutdown(sockfd, SHUT_RDWR); //socket shutdown
+        close(sockfd);//socket closes
         sockfd = -1;
     }
 
-
+    //ncurses lib cleanup
     if (chat_win) {
         delwin(chat_win);
         chat_win = NULL;
@@ -51,14 +58,26 @@ void cleanup_client(void) {
     fflush(stdout);
 }
 
+/*
+FUNCTION    : handle_signal
+DESCRIPTION : handles sinfles to clean up before leaving
+PARAMETERS  : int sig
+RETURNS     : None
+*/
 void handle_signal(int sig) {
     client_running = 0;
-    cleanup_client();
-    exit(0);
+    cleanup_client(); //clean up
+    exit(0); //exits
 }
 
+/*
+FUNCTION    : receive_messages
+DESCRIPTION : r5ecieves message continously from server and updates it in the chat window
+PARAMETERS  : void *arg
+RETURNS     : NULL
+*/
 void* receive_messages(void* arg) {
-    char buffer[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE]; //buffer for messages
     while (client_running) {
         memset(buffer, 0, BUFFER_SIZE);
         int bytes_received = recv(sockfd, buffer, BUFFER_SIZE, 0);
@@ -67,15 +86,21 @@ void* receive_messages(void* arg) {
                 update_chat_window("*** Server disconnected ***");
                 client_running = 0;
             }
-            break;
+            break; //breaks the loop if disconnected
         }
-        update_chat_window(buffer);
+        update_chat_window(buffer); //updates the window
     }
     return NULL;
 }
 
+/*
+FUNCTION    : send_messages
+DESCRIPTION : reads user input and sends thre message to the server
+PARAMETERS  : void *arg
+RETURNS     : NULL
+*/
 void* send_messages(void* arg) {
-    char message[BUFFER_SIZE];
+    char message[BUFFER_SIZE]; //buffer for message
     int bytes_sent;
 
     while (client_running) {
@@ -83,7 +108,7 @@ void* send_messages(void* arg) {
         werase(input_win);
         box(input_win, 0, 0);
         mvwprintw(input_win, 1, 1, "Message: ");
-        wrefresh(input_win);
+        wrefresh(input_win); //refreshes the window
 
 
         echo();
@@ -92,16 +117,16 @@ void* send_messages(void* arg) {
         wrefresh(input_win);
 
 
-        wgetnstr(input_win, message, BUFFER_SIZE - 10);
+        wgetnstr(input_win, message, BUFFER_SIZE - 10); //user;s input
 
 
         noecho();
 
 
-        if (strcmp(message, ">>bye<<") == 0) {
-            client_running = 0;
-            cleanup_client();
-            break;
+        if (strcmp(message, ">>bye<<") == 0) { //checks if leaving
+            client_running = 0; //stops the client
+            cleanup_client(); // cleanup
+            break; //and then exit
         }
 
 
@@ -119,13 +144,13 @@ void* send_messages(void* arg) {
         update_chat_window(local_message);
 
 
-        bytes_sent = send(sockfd, message, strlen(message), 0);
+        bytes_sent = send(sockfd, message, strlen(message), 0); //sends the message to the server
         if (bytes_sent <= 0) {
             if (client_running) {
                 mvwprintw(chat_win, 1, 1, "Error sending message");
                 wrefresh(chat_win);
             }
-            break;
+            break; //exists if there is an error
         }
     }
 
@@ -133,25 +158,25 @@ void* send_messages(void* arg) {
 }
 
 int main(int argc, char* argv[]) {
-    struct sockaddr_in server_addr;
-    pthread_t recv_thread, send_thread;
+    struct sockaddr_in server_addr; //struct for server addr
+    pthread_t recv_thread, send_thread;//thread
 
 
-    signal(SIGINT, handle_signal);
+    signal(SIGINT, handle_signal);//set signals if leaving
     signal(SIGTERM, handle_signal);
 
 
-    initscr();
+    initscr(); //ncurses lib
     cbreak();
     noecho();
     start_color();
     init_pair(1, COLOR_WHITE, COLOR_BLUE);
     init_pair(2, COLOR_BLACK, COLOR_WHITE);
 
-
+    //creates a window for chat and input
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
-    chat_win = newwin(max_y - 3, max_x, 0, 0);
+    chat_win = newwin(max_y - 3, max_x, 0, 0);//chat window
     input_win = newwin(3, max_x, max_y - 3, 0);
     scrollok(chat_win, TRUE);
 
@@ -180,7 +205,7 @@ int main(int argc, char* argv[]) {
     echo();
     mvwgetnstr(input_win, 1, 35, server_ip, 15);
     noecho();
-
+    //sets a default ip if none given
     if (strlen(server_ip) == 0) {
         strcpy(server_ip, "127.0.0.1");
     }
@@ -191,7 +216,7 @@ int main(int argc, char* argv[]) {
     server_addr.sin_port = htons(SERVER_PORT);
 
     if (inet_pton(AF_INET, server_ip, &server_addr.sin_addr) <= 0) {
-        endwin();
+        endwin(); //closes ncurses before existing
         printf("Invalid IP address\n");
         return 1;
     }
@@ -201,17 +226,17 @@ int main(int argc, char* argv[]) {
         perror("Connection failed");
         return 1;
     }
-
+    //sends username to server
 
     send(sockfd, username, strlen(username), 0);
 
 
     werase(input_win);
     box(input_win, 0, 0);
-    mvwprintw(input_win, 1, 1, "Message: ");
+    mvwprintw(input_win, 1, 1, "Message: "); //message types here
     wrefresh(input_win);
 
-
+    //thread for sending and recieving messages
     pthread_create(&recv_thread, NULL, receive_messages, NULL);
     pthread_create(&send_thread, NULL, send_messages, NULL);
 
@@ -219,6 +244,6 @@ int main(int argc, char* argv[]) {
     pthread_join(send_thread, NULL);
 
 
-    cleanup_client();
+    cleanup_client(); //clean up
     return 0;
 }
