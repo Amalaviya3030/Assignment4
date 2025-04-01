@@ -1,6 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#include <ncurses.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <errno.h>
+#include "chat_protocol.h"
+#include "server_utils.h"
 
 int main() {
     struct sockaddr_in server_addr;

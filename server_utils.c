@@ -2,6 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <ncurses.h>
+#include <signal.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <errno.h>
+#include <arpa/inet.h>
 
 Client clients[MAX_CLIENTS];
 int client_count = 0;
