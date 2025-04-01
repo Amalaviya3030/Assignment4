@@ -1,3 +1,11 @@
+/*
+FILE          : server_utils.h
+PROJECT       : Chat Server
+PROGRAMMER    : Anchita Kakroa, Uttam Arora, Aryan Malviya
+FIRST VERSION : 31 March 2025
+DESCRIPTION   : header file for chat server whill will contain neccessary function protypes and client connection
+*/
+
 #ifndef SERVER_UTILS_H
 #define SERVER_UTILS_H
 

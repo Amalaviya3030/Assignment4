@@ -1,3 +1,11 @@
+/*
+FILE          : common.h
+PROJECT       : Chat Server
+PROGRAMMER    : Anchita Kakroa, Uttam Arora, Aryan Malviya
+FIRST VERSION : 31 March 2025
+DESCRIPTION   : This file contains common const and lib ha=eaders for both chat server and client
+*/
+
 #ifndef COMMON_H
 #define COMMON_H
 

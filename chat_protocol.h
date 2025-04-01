@@ -13,7 +13,6 @@
 #define MSG_TYPE_JOIN 2
 #define MSG_TYPE_LEAVE 3
 
-
 // protocols
 typedef struct {
     uint8_t type;
